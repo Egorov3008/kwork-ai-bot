@@ -54,9 +54,9 @@ class Database:
     async def add_order(self, order_data: dict):
         """Добавление заказа"""
         await self.conn.execute("""
-            INSERT OR IGNORE INTO orders 
-            (order_id, title, budget, description, deadline, category, client_username)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+            INSERT OR REPLACE INTO orders 
+            (order_id, title, budget, description, deadline, category, client_username, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')
         """, (
             order_data['order_id'],
             order_data['title'],
@@ -76,7 +76,9 @@ class Database:
         )
         row = await cursor.fetchone()
         if row:
-            return dict(row)
+            # Преобразуем row в словарь с правильными ключами
+            columns = [description[0] for description in cursor.description]
+            return dict(zip(columns, row))
         return None
     
     async def get_pending_orders(self, limit: int = 10) -> List[dict]:
@@ -86,7 +88,9 @@ class Database:
             (limit,)
         )
         rows = await cursor.fetchall()
-        return [dict(row) for row in rows]
+        # Преобразуем rows в список словарей с правильными ключами
+        columns = [description[0] for description in cursor.description]
+        return [dict(zip(columns, row)) for row in rows]
     
     async def update_order_status(self, order_id: str, status: str, draft_response: str = None):
         """Обновление статуса заказа"""
@@ -146,7 +150,9 @@ class Database:
             ORDER BY created_at DESC
         """)
         rows = await cursor.fetchall()
-        return [dict(row) for row in rows]
+        # Преобразуем rows в список словарей с правильными ключами
+        columns = [description[0] for description in cursor.description]
+        return [dict(zip(columns, row)) for row in rows]
 
 
 # Глобальная база данных
