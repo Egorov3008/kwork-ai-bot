@@ -1,65 +1,36 @@
-# .gitignore for Kwork AI Bot
-
-# Environment files
-.env
-*.env
-.env.local
-.env.*.local
-
-# Virtual environment
-venv/
-env/
-.venv/
-
+```
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+*.pyc
+*.pyo
+*.pyd
 
-# Database files
-*.db
-*.db-shm
-*.db-wal
-*.sqlite
-*.sqlite3
+# Dependencies
+.venv/
+venv/
+env/
 
 # Logs
 *.log
-logs/
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Coverage
+.coverage
+coverage/
+htmlcov/
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
+*.tmp
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Temporary files
-*.tmp
-*.bak
-*.cache
-
-# Testing
-test_*.py
-test_*.db
+```

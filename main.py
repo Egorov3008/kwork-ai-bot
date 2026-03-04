@@ -7,9 +7,19 @@ from aiogram.fsm.state import State, StatesGroup
 from bot.bot import bot, dp
 from bot.handlers import start_command, orders_command, stats_command, stop_command, get_response_keyboard
 from database.db import init_db, get_pending_orders, get_stats, increment_stats, get_order, update_order_status, mark_sent
-from kwork.client import KworkClient
+from kwork.kwork_client import KworkClient
+from services.order_service import OrderService
 from config import Config
 import asyncio
+import logging
+
+
+# Настройка логирования
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 
 # Состояния для машины состояний
@@ -20,58 +30,42 @@ class EditingState(StatesGroup):
 async def check_new_orders():
     """Проверка новых заказов каждые 30 минут"""
     try:
-        client = KworkClient(
-            username=Config.KWORK_USERNAME,
+        # Создаем клиент Kwork
+        kwork_client = KworkClient(
+            email=Config.KWORK_USERNAME,
             password=Config.KWORK_PASSWORD
         )
-        await client.connect()
+        await kwork_client.connect()
         
-        # Получаем заказы
-        orders = await client.get_filtered_orders(Config.KEYWORDS)
+        # Создаем сервис обработки заказов
+        order_service = OrderService(kwork_client)
         
-        print(f"🔍 Проверено {len(orders)} новых заказов")
+        # Выполняем полный цикл обработки заказов
+        result = await order_service.process_new_orders()
         
-        if orders:
-            for order in orders:
-                # Проверяем есть ли уже в базе
-                existing = await get_order(order.order_id)
-                
-                if not existing:
-                    # Добавляем в базу
-                    await db.add_order({
-                        'order_id': order.order_id,
-                        'title': order.title,
-                        'budget': order.budget,
-                        'description': order.description,
-                        'deadline': order.deadline,
-                        'category': order.category,
-                        'client_username': order.client_username
-                    })
-                    
-                    # Отправляем уведомление пользователю
-                    # TODO: Реализовать отправку уведомления
-                    
-                    print(f"✅ Добавлен заказ: {order.title}")
+        print(f"🔍 Проверка завершена:")
+        print(f"  - Новых заказов получено: {result['fetched']}")
+        print(f"  - Отфильтровано по ключевым словам: {result['filtered']}")
+        print(f"  - Ответов сгенерировано: {result['responses_generated']}")
+        print(f"  - Ответов отправлено: {result['responses_sent']}")
         
-        await client.disconnect()
-        await increment_stats()
+        await kwork_client.disconnect()
         
     except Exception as e:
-        print(f"❌ Ошибка проверки заказов: {e}")
+        logger.error(f"❌ Ошибка проверки заказов: {e}")
 
 
-# Глобальная переменная для клиента
-db = None
+async def periodic_check():
+    """Периодическая проверка каждые 30 минут"""
+    while True:
+        await asyncio.sleep(Config.CHECK_INTERVAL)
+        await check_new_orders()
 
 
 async def on_startup():
     """Запуск при старте"""
-    global db
-    from database.db import Database
-    
-    db = Database(Config.DB_PATH)
-    await db.connect()
-    
+    # Инициализация базы данных
+    await init_db()
     print("✅ База данных подключена")
     
     # Регистрация команд
@@ -85,25 +79,12 @@ async def on_startup():
     
     print("✅ Команды зарегистрированы")
     
-    # Начало проверки заказов
-    asyncio.create_task(check_new_orders())
-    
     # Запуск периодической проверки
     asyncio.create_task(periodic_check())
 
 
-async def periodic_check():
-    """Периодическая проверка каждые 30 минут"""
-    while True:
-        await asyncio.sleep(Config.CHECK_INTERVAL)
-        await check_new_orders()
-
-
 async def on_shutdown():
     """Очистка при остановке"""
-    global db
-    if db:
-        await db.disconnect()
     print("🛑 Бот остановлен")
 
 

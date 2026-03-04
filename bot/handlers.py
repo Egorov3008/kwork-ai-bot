@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from bot.bot import dp
-from database.db import update_order_status, get_order
+from database.db import update_order_status, get_order, get_pending_orders, get_stats
 from ai.generator import generate_ai_response
 import asyncio
 
@@ -27,14 +27,14 @@ async def start_command(message: Message):
 
 async def orders_command(message: Message):
     """Команда /orders"""
-    pending = await get_order("pending")
+    pending = await get_pending_orders(limit=5)
     
     if not pending:
         await message.answer("📭 Нет активных заказов")
         return
     
     text = "📋 Активные заказы:\n\n"
-    for order in pending[:5]:
+    for order in pending:
         text += f"🔹 {order['title']}\n"
         text += f"💰 {order['budget']}₽\n"
         text += f"📝 {order['description'][:100]}...\n\n"
@@ -43,10 +43,13 @@ async def orders_command(message: Message):
 
 async def stats_command(message: Message):
     """Команда /stats"""
+    stats = await get_stats()
+    
     text = "📊 Статистика:\n\n"
-    text += "✅ Всего заказов обработано: 0\n"
-    text += "✅ Ответов отправлено: 0\n"
-    text += "⏰ Среднее время ответа: 0 мин\n"
+    text += f"✅ Всего заказов обработано: {stats['total_processed']}\n"
+    text += f"✅ Ответов отправлено: {stats['total_sent']}\n"
+    if stats['last_updated']:
+        text += f"🕐 Последнее обновление: {stats['last_updated']}\n"
     
     await message.answer(text)
 
