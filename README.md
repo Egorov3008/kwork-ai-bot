@@ -112,6 +112,7 @@ kwork-ai-bot/
 ├── main.py                # Main entry point
 ├── requirements.txt       # Python dependencies
 ├── README.md              # This file
+├── SETUP.md               # Setup guide
 ├── .env.example           # Environment template
 └── .gitignore             # Git ignore rules
 ```
